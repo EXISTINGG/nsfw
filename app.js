@@ -37,60 +37,63 @@ const convert = async (img) => {
 app.use(cors())
 
 app.post('/upload-links', async (req, res) => {
-    const links = req.body.links;
-  
-    if (!Array.isArray(links) || links.length === 0) {
-      res.status(400).send('Invalid links provided.');
-    } else if (links.length > 10) {
-      res.status(400).send('最多支持10个链接。');
-    } else {
-      const promises = links.map(async (link) => {
-        try {
-          const imageBuffer = await fetchImage(link);
-          if (!isImageType(imageBuffer)) {
-            const result = {
-              link,
-              error: 'Not an image type.',
-            };
-            return result;
+  const links = req.body.links
+    console.log(222222,links);
+  if (!Array.isArray(links) || links.length === 0) {
+    res.status(400).send('Invalid links provided.')
+  } else if (links.length > 10) {
+    res.status(400).send('最多支持10个链接。')
+  } else {
+    const promises = links.map(async (link) => {
+      try {
+        const imageBuffer = await fetchImage(link)
+        console.log(11111,imageBuffer);
+        const isImage = imageBuffer.mimetype.startsWith('image/')
+        if (!isImage) {
+          const result = {
+            link,
+            error: 'Not an image type.'
           }
-  
-          const image = await convert(imageBuffer);
-          const predictions = await _model.classify(image);
-          image.dispose();
-  
-          const formattedPredictions = predictions.map(({ className, probability }) => ({
-            className,
-            probability: (probability * 100).toFixed(2) + '%',
-          }));
-  
-          const sensitiveClasses = ['Hentai', 'Porn', 'Sexy'];
-          const isUnhealthy = formattedPredictions.some(
-            ({ className, probability }) =>
-              sensitiveClasses.includes(className) && parseFloat(probability) > 10
-          );
-  
-          const result = {
-            link,
-            predictions: formattedPredictions,
-            isHealthy: !isUnhealthy,
-          };
-  
-          return result;
-        } catch (error) {
-          const result = {
-            link,
-            error: 'Failed to process image.',
-          };
-          return result;
+          return result
         }
-      });
-  
-      const allResults = await Promise.all(promises);
-      res.json(allResults); // 将处理结果返回给客户端
-    }
-  });
-  
+
+        const image = await convert(imageBuffer)
+        const predictions = await _model.classify(image)
+        image.dispose()
+
+        const formattedPredictions = predictions.map(
+          ({ className, probability }) => ({
+            className,
+            probability: (probability * 100).toFixed(2) + '%'
+          })
+        )
+
+        const sensitiveClasses = ['Hentai', 'Porn', 'Sexy']
+        const isUnhealthy = formattedPredictions.some(
+          ({ className, probability }) =>
+            sensitiveClasses.includes(className) && parseFloat(probability) > 10
+        )
+
+        const result = {
+          link,
+          predictions: formattedPredictions,
+          isHealthy: !isUnhealthy
+        }
+
+        return result
+      } catch (error) {
+        const result = {
+          link,
+          error: 'Failed to process image.'
+        }
+        return result
+      }
+    })
+
+    const allResults = await Promise.all(promises)
+    res.json(allResults) // 将处理结果返回给客户端
+  }
+})
 
 // Helper function to fetch image from a URL using node-fetch
 const fetchImage = async (url) => {
@@ -102,7 +105,7 @@ const fetchImage = async (url) => {
 app.post('/nsfw', upload.single('image'), async (req, res) => {
   if (!req.file) {
     res.status(400).send('Missing image multipart/form-data')
-  } else if (!isImageType(req.file.buffer)) {
+  } else if (!req.file.mimetype.startsWith('image/')) {
     res.status(400).send('Not an image type.')
   } else {
     const image = await convert(req.file.buffer)
@@ -139,7 +142,7 @@ app.post('/nsfws', upload.array('images', 10), async (req, res) => {
     res.status(400).send('最多支持10张')
   } else {
     const promises = req.files.map(async (file) => {
-      if (!isImageType(file.buffer)) {
+      if (!file.mimetype.startsWith('image/')) {
         const result = {
           file: file.originalname,
           error: 'Not an image type.'
