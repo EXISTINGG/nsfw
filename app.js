@@ -178,5 +178,3 @@ app.use((err, req, res, next) => res.status(500).send('发生错误：' + err.me
 
 // 加载模型，并保持在内存中，确保只加载一次
 load_model().then(() => app.listen(80, () => console.log('服务器已启动')));
-
-// curl --request POST localhost:8080/nsfw --header 'Content-Type: multipart/form-data' --data-binary 'image=@/full/path/to/picture.jpg'
