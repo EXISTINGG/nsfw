@@ -2,7 +2,6 @@ const express = require('express')
 const cors = require('cors') // cors中间件
 const multer = require('multer')
 const decode = require('image-decode')
-
 const tf = require('@tensorflow/tfjs-node')
 const nsfw = require('nsfwjs')
 
@@ -106,4 +105,4 @@ app.use((err, req, res, next) => res.send('发生错误,' + err.message))
 // Keep the model in memory, make sure it's loaded only once
 load_model().then(() => app.listen(80, () => console.log('start')))
 
-// curl --request POST localhost:8080/nsfw --header 't-Type: multipart/form-data' --data-binary 'image=@/full/path/to/picture.jpg'
+// curl --request POST localhost:8080/nsfw --header 'Content-Type: multipart/form-data' --data-binary 'image=@/full/path/to/picture.jpg'
