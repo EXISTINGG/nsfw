@@ -29,55 +29,65 @@ const convert = async (img) => {
 app.use(cors())
 
 app.post('/nsfw', upload.single('image'), async (req, res) => {
-  if (!req.file) res.status(400).send('Missing image multipart/form-data')
-  else {
+  if (!req.file) {
+    res.status(400).send('Missing image multipart/form-data')
+  } else {
     const image = await convert(req.file.buffer)
     const predictions = await _model.classify(image)
     image.dispose()
 
-    const result = {
-      file: req.file.originalname,
-      // predictions: predictions,
-      predictions: predictions.map(({ className, probability }) => ({
+    const formattedPredictions = predictions.map(
+      ({ className, probability }) => ({
         className,
         probability: (probability * 100).toFixed(2) + '%'
-      }))
-    }
-
-    // 判断是否健康
-    const isHealthy = predictions.every(
-      ({ probability }) => probability * 100 <= 10
+      })
     )
-    result.isHealthy = isHealthy
+
+    const sensitiveClasses = ['Hentai', 'Porn', 'Sexy']
+    const isUnhealthy = formattedPredictions.some(
+      ({ className, probability }) =>
+        sensitiveClasses.includes(className) && parseFloat(probability) > 10
+    )
+
+    const result = {
+      file: req.file.originalname,
+      predictions: formattedPredictions,
+      isHealthy: !isUnhealthy
+    }
 
     res.json(result)
   }
 })
 
-app.post('/nsfws/', upload.array('images', 10), async (req, res) => {
-  if (!req.files || req.files.length === 0)
+app.post('/nsfws', upload.array('images', 10), async (req, res) => {
+  if (!req.files || req.files.length === 0) {
     res.status(400).send('Missing image(s) multipart/form-data')
-  if (req.files.length > 10)
+  } else if (req.files.length > 10) {
     res.status(400).send('最多支持10张')
-  else {
+  } else {
     const promises = req.files.map(async (file) => {
       const image = await convert(file.buffer)
       const predictions = await _model.classify(image)
       image.dispose()
 
-      const result = {
-        file: file.originalname,
-        predictions: predictions.map(({ className, probability }) => ({
+      const formattedPredictions = predictions.map(
+        ({ className, probability }) => ({
           className,
           probability: (probability * 100).toFixed(2) + '%'
-        }))
-      }
-
-      // 判断是否健康
-      const isHealthy = predictions.every(
-        ({ probability }) => probability * 100 <= 10
+        })
       )
-      result.isHealthy = isHealthy
+
+      const sensitiveClasses = ['Hentai', 'Porn', 'Sexy']
+      const isUnhealthy = formattedPredictions.some(
+        ({ className, probability }) =>
+          sensitiveClasses.includes(className) && parseFloat(probability) > 10
+      )
+
+      const result = {
+        file: file.originalname,
+        predictions: formattedPredictions,
+        isHealthy: !isUnhealthy
+      }
 
       return result
     })
