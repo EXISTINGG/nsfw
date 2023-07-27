@@ -12,6 +12,7 @@ const upload = multer()
 let _model
 
 const convert = async (img) => {
+  // image-decode模块用于解码图片
   const { data, width, height } = decode(img)
 
   const numChannels = 3
@@ -33,7 +34,56 @@ app.post('/nsfw', upload.single('image'), async (req, res) => {
     const image = await convert(req.file.buffer)
     const predictions = await _model.classify(image)
     image.dispose()
-    res.json(predictions)
+
+    const result = {
+      file: req.file.originalname,
+      // predictions: predictions,
+      predictions: predictions.map(({ className, probability }) => ({
+        className,
+        probability: (probability * 100).toFixed(2) + '%'
+      }))
+    }
+
+    // 判断是否健康
+    const isHealthy = predictions.every(
+      ({ probability }) => probability * 100 <= 10
+    )
+    result.isHealthy = isHealthy
+
+    res.json(result)
+  }
+})
+
+app.post('/nsfws/', upload.array('images', 10), async (req, res) => {
+  if (!req.files || req.files.length === 0)
+    res.status(400).send('Missing image(s) multipart/form-data')
+  if (req.files.length > 10)
+    res.status(400).send('最多支持10张')
+  else {
+    const promises = req.files.map(async (file) => {
+      const image = await convert(file.buffer)
+      const predictions = await _model.classify(image)
+      image.dispose()
+
+      const result = {
+        file: file.originalname,
+        predictions: predictions.map(({ className, probability }) => ({
+          className,
+          probability: (probability * 100).toFixed(2) + '%'
+        }))
+      }
+
+      // 判断是否健康
+      const isHealthy = predictions.every(
+        ({ probability }) => probability * 100 <= 10
+      )
+      result.isHealthy = isHealthy
+
+      return result
+    })
+
+    const allResults = await Promise.all(promises)
+    res.json(allResults)
   }
 })
 
@@ -44,6 +94,6 @@ const load_model = async () => {
 app.use((err, req, res, next) => res.send('发生错误,' + err.message))
 
 // Keep the model in memory, make sure it's loaded only once
-load_model().then(() => app.listen(80,() => console.log('start')))
+load_model().then(() => app.listen(80, () => console.log('start')))
 
 // curl --request POST localhost:8080/nsfw --header 'Content-Type: multipart/form-data' --data-binary 'image=@/full/path/to/picture.jpg'
