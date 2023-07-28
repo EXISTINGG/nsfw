@@ -143,6 +143,7 @@ app.get('/nsfw-link', async (req, res) => {
 // 新添加的 API 路由来支持链接形式检查图片内容
 app.post('/nsfw-links', async (req, res) => {
   const imageUrls = req.body.image_urls; // 获取提交的图片链接数组
+  console.log(111,imageUrls);
   if (!Array.isArray(imageUrls) || imageUrls.length === 0) {
     return res.status(400).send('Invalid image_urls in request body');
   }
