@@ -4,6 +4,7 @@ const multer = require('multer')
 const decode = require('image-decode')
 const tf = require('@tensorflow/tfjs-node')
 const nsfw = require('nsfwjs')
+const axios = require('axios')
 
 const app = express()
 const upload = multer()
@@ -96,11 +97,52 @@ app.post('/nsfws', upload.array('images', 10), async (req, res) => {
   }
 })
 
+// 新添加的 API 路由来支持链接形式检查图片内容
+app.post('/nsfw-link', async (req, res) => {
+  const imageUrl = req.body.image_url; // 获取提交的图片链接
+  if (!imageUrl) {
+    return res.status(400).send('Missing image_url in request body');
+  }
+
+  try {
+    // 使用 axios 发起 GET 请求获取图片数据
+    const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+    const imageBuffer = Buffer.from(response.data);
+    const image = await convert(imageBuffer);
+    const predictions = await _model.classify(image);
+    image.dispose();
+
+    const formattedPredictions = predictions.map(
+      ({ className, probability }) => ({
+        className,
+        probability: (probability * 100).toFixed(2) + '%'
+      })
+    );
+
+    const sensitiveClasses = ['Hentai', 'Porn', 'Sexy'];
+    const isUnhealthy = formattedPredictions.some(
+      ({ className, probability }) =>
+        sensitiveClasses.includes(className) && parseFloat(probability) > 10
+    );
+
+    const result = {
+      image_url: imageUrl,
+      predictions: formattedPredictions,
+      isHealthy: !isUnhealthy
+    };
+
+    res.json(result);
+  } catch (error) {
+    console.error(`An error occurred while processing image from ${imageUrl}: ${error.message}`);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
 const load_model = async () => {
   _model = await nsfw.load()
 }
 
-app.use((err, req, res, next) => res.send('发生错误,' + err.message))
+app.use((err, req, res, next) => res.status(500).json({ error: `服务器内部错误。${err.message}` }))
 
 // Keep the model in memory, make sure it's loaded only once
 load_model().then(() => app.listen(80, () => console.log('start')))
