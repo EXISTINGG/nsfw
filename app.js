@@ -5,9 +5,13 @@ const decode = require('image-decode')
 const tf = require('@tensorflow/tfjs-node')
 const nsfw = require('nsfwjs')
 const axios = require('axios')
+const bodyParser = require('body-parser');
 
 const app = express()
 const upload = multer()
+app.use(bodyParser.json()); // 解析 JSON 格式的请求体
+app.use(bodyParser.urlencoded({ extended: true })); // 解析 URL-encoded 格式的请求体
+
 
 let _model
 
@@ -100,7 +104,6 @@ app.post('/nsfws', upload.array('images', 10), async (req, res) => {
 // 新添加的 API 路由来支持链接形式检查图片内容
 app.get('/nsfw-link', async (req, res) => {
   const imageUrl = req.query.image_url; // 获取提交的图片链接
-  console.log(111,imageUrl);
   if (!imageUrl) {
     return res.status(400).send('Missing image_url in request body');
   }
