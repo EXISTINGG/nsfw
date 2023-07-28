@@ -98,8 +98,9 @@ app.post('/nsfws', upload.array('images', 10), async (req, res) => {
 })
 
 // 新添加的 API 路由来支持链接形式检查图片内容
-app.post('/nsfw-link', async (req, res) => {
-  const imageUrl = req.body.image_url; // 获取提交的图片链接
+app.get('/nsfw-link', async (req, res) => {
+  const imageUrl = req.query.image_url; // 获取提交的图片链接
+  console.log(111,imageUrl);
   if (!imageUrl) {
     return res.status(400).send('Missing image_url in request body');
   }
@@ -109,6 +110,7 @@ app.post('/nsfw-link', async (req, res) => {
     const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
     const imageBuffer = Buffer.from(response.data);
     const image = await convert(imageBuffer);
+    console.log(222,response);
     const predictions = await _model.classify(image);
     image.dispose();
 
