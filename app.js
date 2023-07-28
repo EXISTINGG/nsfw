@@ -140,6 +140,52 @@ app.get('/nsfw-link', async (req, res) => {
   }
 });
 
+// 新添加的 API 路由来支持链接形式检查图片内容
+app.post('/nsfw-links', async (req, res) => {
+  const imageUrls = req.body.image_urls; // 获取提交的图片链接数组
+  if (!Array.isArray(imageUrls) || imageUrls.length === 0) {
+    return res.status(400).send('Invalid image_urls in request body');
+  }
+
+  try {
+    const results = await Promise.all(
+      imageUrls.map(async (imageUrl) => {
+        // 使用 axios 发起 GET 请求获取图片数据
+        const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+        const imageBuffer = Buffer.from(response.data);
+        const image = await convert(imageBuffer);
+        const predictions = await _model.classify(image);
+        image.dispose();
+
+        const formattedPredictions = predictions.map(
+          ({ className, probability }) => ({
+            className,
+            probability: (probability * 100).toFixed(2) + '%'
+          })
+        );
+
+        const sensitiveClasses = ['Hentai', 'Porn', 'Sexy'];
+        const isUnhealthy = formattedPredictions.some(
+          ({ className, probability }) =>
+            sensitiveClasses.includes(className) && parseFloat(probability) > 10
+        );
+
+        return {
+          image_url: imageUrl,
+          predictions: formattedPredictions,
+          isHealthy: !isUnhealthy
+        };
+      })
+    );
+
+    res.json(results);
+  } catch (error) {
+    console.error('An error occurred while processing images:', error.message);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+
 const load_model = async () => {
   _model = await nsfw.load()
 }
