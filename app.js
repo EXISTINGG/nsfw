@@ -50,7 +50,7 @@ app.post('/nsfw', upload.single('image'), async (req, res) => {
     const sensitiveClasses = ['Hentai', 'Porn', 'Sexy']
     const isUnhealthy = formattedPredictions.some(
       ({ className, probability }) =>
-        sensitiveClasses.includes(className) && parseFloat(probability) > 10
+        sensitiveClasses.includes(className) && parseFloat(probability) > 30
     )
 
     const result = {
@@ -84,7 +84,7 @@ app.post('/nsfws', upload.array('images', 10), async (req, res) => {
       const sensitiveClasses = ['Hentai', 'Porn', 'Sexy']
       const isUnhealthy = formattedPredictions.some(
         ({ className, probability }) =>
-          sensitiveClasses.includes(className) && parseFloat(probability) > 10
+          sensitiveClasses.includes(className) && parseFloat(probability) > 30
       )
 
       const result = {
@@ -113,7 +113,6 @@ app.get('/nsfw-link', async (req, res) => {
     const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
     const imageBuffer = Buffer.from(response.data);
     const image = await convert(imageBuffer);
-    console.log(222,response);
     const predictions = await _model.classify(image);
     image.dispose();
 
@@ -127,7 +126,7 @@ app.get('/nsfw-link', async (req, res) => {
     const sensitiveClasses = ['Hentai', 'Porn', 'Sexy'];
     const isUnhealthy = formattedPredictions.some(
       ({ className, probability }) =>
-        sensitiveClasses.includes(className) && parseFloat(probability) > 10
+        sensitiveClasses.includes(className) && parseFloat(probability) > 30
     );
 
     const result = {
@@ -146,10 +145,12 @@ app.get('/nsfw-link', async (req, res) => {
 // 新添加的 API 路由来支持链接形式检查图片内容
 app.post('/nsfw-links', async (req, res) => {
   const imageUrls = req.body.image_urls; // 获取提交的图片链接数组
-  console.log(111,imageUrls);
+
   if (!Array.isArray(imageUrls) || imageUrls.length === 0) {
     return res.status(400).send('Invalid image_urls in request body');
   }
+
+  if (imageUrls.length > 10) return res.status(400).send('最多支持10张')
 
   try {
     const results = await Promise.all(
@@ -171,7 +172,7 @@ app.post('/nsfw-links', async (req, res) => {
         const sensitiveClasses = ['Hentai', 'Porn', 'Sexy'];
         const isUnhealthy = formattedPredictions.some(
           ({ className, probability }) =>
-            sensitiveClasses.includes(className) && parseFloat(probability) > 10
+            sensitiveClasses.includes(className) && parseFloat(probability) > 30
         );
 
         return {
