@@ -359,6 +359,7 @@ app.post('/nsfw-links', async (req, res) => {
           console.error(`Error processing image from ${imageUrl}: ${error.message}`);
           return {
             imageUrl,
+            error,
             predictions: [],
             isHealthy: false
           };
