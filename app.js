@@ -239,12 +239,12 @@ app.use(cors());
 
 let _model;
 
+// 解码1
 const converts = async (img) => {
   const decodedImage = await tf.node.decodeImage(img, 3);
   return decodedImage;
 };
-
-
+// 解码2
 const convert = async (img) => {
   const { data, width, height } = decode(img);
   const numChannels = 3;
@@ -258,7 +258,7 @@ const convert = async (img) => {
   return tf.tensor3d(values, [height, width, numChannels], 'int32');
 };
 
-const processImage = async (imageBuffer) => {
+const processImage = async (imageBuffer,imageName) => {
   const image = await converts(imageBuffer);
   const predictions = await _model.classify(image);
   image.dispose();
@@ -277,6 +277,7 @@ const processImage = async (imageBuffer) => {
   );
 
   return {
+    imageName,
     predictions: formattedPredictions,
     isHealthy: !isUnhealthy
   };
@@ -297,7 +298,7 @@ app.post('/nsfws', upload.array('images', 10), async (req, res) => {
     const concurrentPromises = [];
 
     for (const file of imageFiles) {
-      const promise = processImage(file.buffer)
+      const promise = processImage(file.buffer,file.originalname)
         .then(result => results.push(result))
         .catch(error => console.error(`Error processing image: ${error.message}`));
       concurrentPromises.push(promise);
@@ -329,7 +330,7 @@ app.get('/nsfw-link', async (req, res) => {
   try {
     const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
     const imageBuffer = Buffer.from(response.data);
-    const result = await processImage(imageBuffer);
+    const result = await processImage(imageBuffer,imageUrl);
 
     res.send({
       status: 200,
@@ -353,10 +354,11 @@ app.post('/nsfw-links', async (req, res) => {
         try {
           const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
           const imageBuffer = Buffer.from(response.data);
-          return await processImage(imageBuffer);
+          return await processImage(imageBuffer,imageUrl);
         } catch (error) {
           console.error(`Error processing image from ${imageUrl}: ${error.message}`);
           return {
+            imageUrl,
             predictions: [],
             isHealthy: false
           };
