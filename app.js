@@ -64,6 +64,7 @@ app.post('/nsfw', upload.single('image'), async (req, res) => {
 })
 
 app.post('/nsfws', upload.array('images', 10), async (req, res) => {
+  console.log(req.files,req);
   if (!req.files || req.files.length === 0) {
     res.status(400).send('Missing image(s) multipart/form-data')
   } else if (req.files.length > 10) {
