@@ -59,7 +59,11 @@ app.post('/nsfw', upload.single('image'), async (req, res) => {
       isHealthy: !isUnhealthy
     }
 
-    res.json(result)
+    // res.json(result)
+    res.send({
+      status: 200,
+      result
+    })
   }
 })
 
