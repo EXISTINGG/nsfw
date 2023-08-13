@@ -283,43 +283,76 @@ const processImage = async (imageBuffer,imageName) => {
   };
 };
 
+// 处理上传单张图片的 POST 请求
+app.post('/nsfw', upload.single('image'), async (req, res) => {
+  try {
+    // 检查是否存在上传文件
+    if (!req.file) {
+      return res.status(400).send('缺少图片文件：multipart/form-data');
+    }
+
+    // 处理图片并获取结果
+    const result = await processImage(req.file.buffer, req.file.originalname);
+
+    // 返回处理结果给客户端
+    res.send({
+      status: 200,
+      result
+    });
+
+  } catch (error) {
+    console.error('处理图片时发生错误：', error.message);
+    return res.status(500).json({ error: '服务器内部错误。' });
+  }
+});
+
+
+// 处理上传多张图片的 POST 请求
 app.post('/nsfws', upload.array('images', 10), async (req, res) => {
   try {
+    // 检查是否存在上传文件
     if (!req.files || req.files.length === 0) {
-      return res.status(400).send('Missing image(s) multipart/form-data');
+      return res.status(400).send('缺少图片文件：multipart/form-data');
     }
 
     const imageFiles = req.files;
+    // 检查上传文件数量是否超过限制
     if (imageFiles.length > 10) {
-      return res.status(400).send('最多支持10张');
+      return res.status(400).send('最多支持上传10张图片');
     }
 
     const results = [];
     const concurrentPromises = [];
 
+    // 遍历处理每个上传的图片文件
     for (const file of imageFiles) {
-      const promise = processImage(file.buffer,file.originalname)
+      // 创建一个 Promise，用于处理图片
+      const promise = processImage(file.buffer, file.originalname)
         .then(result => results.push(result))
-        .catch(error => console.error(`Error processing image: ${error.message}`));
+        .catch(error => console.error(`处理图片时发生错误：${error.message}`));
       concurrentPromises.push(promise);
 
+      // 当并发请求数量达到阈值时，等待并发请求完成
       if (concurrentPromises.length >= MAX_CONCURRENT_REQUESTS) {
         await Promise.all(concurrentPromises);
         concurrentPromises.length = 0;
       }
     }
 
+    // 等待剩余的并发请求完成
     await Promise.all(concurrentPromises);
 
+    // 返回处理结果给客户端
     res.send({
       status: 200,
       allResults: results
     });
   } catch (error) {
-    console.error('An error occurred while processing images:', error.message);
-    return res.status(500).json({ error: 'Internal server error.' });
+    console.error('处理图片时发生错误：', error.message);
+    return res.status(500).json({ error: '服务器内部错误。' });
   }
 });
+
 
 app.get('/nsfw-link', async (req, res) => {
   const imageUrl = req.query.image_url;
