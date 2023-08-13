@@ -102,7 +102,11 @@ app.post('/nsfws', upload.array('images', 10), async (req, res) => {
     })
 
     const allResults = await Promise.all(promises)
-    res.json(allResults)
+    // res.json(allResults)
+    res.send({
+      status: 200,
+      allResults
+    })
   }
 })
 
@@ -140,7 +144,11 @@ app.get('/nsfw-link', async (req, res) => {
       isHealthy: !isUnhealthy
     };
 
-    res.json(result);
+    // res.json(result);
+    res.send({
+      status: 200,
+      result
+    })
   } catch (error) {
     console.error(`An error occurred while processing image from ${imageUrl}: ${error.message}`);
     return res.status(500).json({ error: 'Internal server error.' });
@@ -188,7 +196,11 @@ app.post('/nsfw-links', async (req, res) => {
       })
     );
 
-    res.json(results);
+    // res.json(results);
+    res.send({
+      status: 200,
+      results
+    })
   } catch (error) {
     console.error('An error occurred while processing images:', error.message);
     return res.status(500).json({ error: 'Internal server error.' });
