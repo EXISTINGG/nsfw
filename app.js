@@ -354,8 +354,29 @@ app.post('/nsfws', upload.array('images', 10), async (req, res) => {
 });
 
 
-app.get('/nsfw-link', async (req, res) => {
+app.get('api/nsfw-link', async (req, res) => {
   const imageUrl = req.query.image_url;
+  if (!imageUrl) {
+    return res.status(400).send('Missing image_url in request body');
+  }
+
+  try {
+    const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+    const imageBuffer = Buffer.from(response.data);
+    const result = await processImage(imageBuffer,imageUrl);
+
+    res.send({
+      status: 200,
+      result
+    });
+  } catch (error) {
+    console.error(`An error occurred while processing image from ${imageUrl}: ${error.message}`);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+app.post('/nsfw-link', async (req, res) => {
+  const imageUrl = req.body.image_url;
   if (!imageUrl) {
     return res.status(400).send('Missing image_url in request body');
   }
