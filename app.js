@@ -283,12 +283,24 @@ const processImage = async (imageBuffer,imageName) => {
   };
 };
 
+//在路由之前 配置响应数据的中间件
+app.use((req, res, next) => {
+  //err的值,可能是错误对象或描述错误的字符串
+  res.err = (err, status = 400) => {
+      res.send({
+          status,
+          message: err instanceof Error ? err.message : err 
+      })
+  }
+  next()
+})
+
 // 处理上传单张图片的 POST 请求
 app.post('/nsfw', upload.single('image'), async (req, res) => {
   try {
     // 检查是否存在上传文件
     if (!req.file) {
-      return res.status(400).send('缺少图片文件：multipart/form-data');
+      return res.err('缺少图片文件：multipart/form-data');
     }
 
     // 处理图片并获取结果
@@ -302,7 +314,7 @@ app.post('/nsfw', upload.single('image'), async (req, res) => {
 
   } catch (error) {
     console.error('处理图片时发生错误：', error.message);
-    return res.status(500).json({ error: '服务器内部错误。' });
+    return res.err('服务器内部错误。',500);
   }
 });
 
@@ -312,13 +324,13 @@ app.post('/nsfws', upload.array('images', 10), async (req, res) => {
   try {
     // 检查是否存在上传文件
     if (!req.files || req.files.length === 0) {
-      return res.status(400).send('缺少图片文件：multipart/form-data');
+      return res.err('缺少图片文件：multipart/form-data');
     }
 
     const imageFiles = req.files;
     // 检查上传文件数量是否超过限制
     if (imageFiles.length > 10) {
-      return res.status(400).send('最多支持上传10张图片');
+      return res.err('最多支持上传10张图片');
     }
 
     const results = [];
@@ -349,7 +361,7 @@ app.post('/nsfws', upload.array('images', 10), async (req, res) => {
     });
   } catch (error) {
     console.error('处理图片时发生错误：', error.message);
-    return res.status(500).json({ error: '服务器内部错误。' });
+    return res.err('服务器内部错误。',500);
   }
 });
 
@@ -357,7 +369,7 @@ app.post('/nsfws', upload.array('images', 10), async (req, res) => {
 app.get('api/nsfw-link', async (req, res) => {
   const imageUrl = req.query.image_url;
   if (!imageUrl) {
-    return res.status(400).send('Missing image_url in request body');
+    return res.err('Missing image_url in request query');
   }
 
   try {
@@ -371,14 +383,14 @@ app.get('api/nsfw-link', async (req, res) => {
     });
   } catch (error) {
     console.error(`An error occurred while processing image from ${imageUrl}: ${error.message}`);
-    return res.status(500).json({ error: 'Internal server error.' });
+    return res.err('Internal server error.',500);
   }
 });
 
 app.post('/nsfw-link', async (req, res) => {
   const imageUrl = req.body.image_url;
   if (!imageUrl) {
-    return res.status(400).send('Missing image_url in request body');
+    return res.err('Missing image_url in request body');
   }
 
   try {
@@ -392,7 +404,7 @@ app.post('/nsfw-link', async (req, res) => {
     });
   } catch (error) {
     console.error(`An error occurred while processing image from ${imageUrl}: ${error.message}`);
-    return res.status(500).json({ error: 'Internal server error.' });
+    return res.err('Internal server error.',500);
   }
 });
 
@@ -400,7 +412,7 @@ app.post('/nsfw-links', async (req, res) => {
   try {
     const imageUrls = req.body.image_urls;
     if (!Array.isArray(imageUrls) || imageUrls.length === 0 || imageUrls.length > 10) {
-      return res.status(400).send('Invalid image_urls in request body');
+      return res.err('Invalid image_urls in request body');
     }
 
     const results = await Promise.all(
@@ -426,14 +438,14 @@ app.post('/nsfw-links', async (req, res) => {
     });
   } catch (error) {
     console.error('An error occurred while processing images:', error.message);
-    return res.status(500).json({ error: 'Internal server error.' });
+    return res.err('Internal server error.',500);
   }
 });
 
 // 错误处理中间件
 app.use((err, req, res, next) => {
   console.error(`服务器内部错误。${err.message}`);
-  res.status(500).json({ error: `服务器内部错误。${err.message}` });
+  res.err(`服务器内部错误。${err.message}`,500);
 });
 
 // 在服务器关闭之前释放模型资源
@@ -446,6 +458,13 @@ process.on('beforeExit', () => {
 const loadModel = async () => {
   _model = await nsfw.load();
 };
+
+// 错误中间件
+app.use((err, req, res, next) => {
+  console.log(err);
+  // 未知错误
+  res.err(err)
+})
 
 loadModel().then(() => {
   app.listen(80, () => console.log('Server started on port 80'));
