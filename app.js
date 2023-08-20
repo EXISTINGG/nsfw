@@ -366,7 +366,7 @@ app.post('/nsfws', upload.array('images', 10), async (req, res) => {
 });
 
 
-app.get('api/nsfw-link', async (req, res) => {
+app.get('/api/nsfw-link', async (req, res) => {
   const imageUrl = req.query.image_url;
   if (!imageUrl) {
     return res.err('Missing image_url in request query');
