@@ -295,6 +295,9 @@ app.use((req, res, next) => {
   next()
 })
 
+// 激活服务器
+app.get('/start',(req,res) => res.send('start nsfwjs server'))
+
 // 处理上传单张图片的 POST 请求
 app.post('/nsfw', upload.single('image'), async (req, res) => {
   try {
